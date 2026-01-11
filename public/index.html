@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checklist - Telegram Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app" class="app">
+        <!-- Экран 1: Список чеклистов -->
+        <div id="listScreen" class="screen">
+            <div class="header">
+                <h1>📋 Чеклисты</h1>
+                <button id="addBtn" class="btn-add">
+                    <span class="btn-icon">➕</span>
+                    Add new
+                </button>
+            </div>
+            
+            <div id="checklistsList" class="checklists-list">
+                <!-- Чеклисты будут добавлены здесь -->
+            </div>
+            
+            <div id="emptyState" class="empty-state">
+                <p>📭 Нет чеклистов</p>
+                <p class="text-secondary">Нажмите "Add new" чтобы создать</p>
+            </div>
+        </div>
+
+        <!-- Экран 2: Содержимое чеклиста -->
+        <div id="checklistScreen" class="screen hidden">
+            <div class="header">
+                <button id="backBtn" class="btn-back">
+                    <span class="btn-icon">←</span>
+                </button>
+                <h1 id="checklistTitle">Checklist</h1>
+                <button id="deleteBtn" class="btn-delete">
+                    <span class="btn-icon">🗑️</span>
+                </button>
+            </div>
+            
+            <div id="itemsList" class="items-list">
+                <!-- Пункты чеклиста будут здесь -->
+            </div>
+        </div>
+
+        <!-- Модальное окно для создания чеклиста -->
+        <div id="createModal" class="modal hidden">
+            <div class="modal-content">
+                <h2>Новый чеклист</h2>
+                <input 
+                    id="nameInput" 
+                    type="text" 
+                    placeholder="Введите имя" 
+                    class="input"
+                    autocomplete="off"
+                />
+                <div class="modal-buttons">
+                    <button id="cancelBtn" class="btn btn-secondary">Отмена</button>
+                    <button id="createBtn" class="btn btn-primary">Создать</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dropdown для деталей item -->
+        <div id="detailsModal" class="modal hidden details-modal">
+            <div class="modal-content details-content">
+                <div class="modal-header">
+                    <h2 id="detailsTitle">Bank Name</h2>
+                    <button id="closeDetailsBtn" class="btn-close">✕</button>
+                </div>
+                
+                <div id="detailsBody" class="details-body">
+                    <!-- Login -->
+                    <div class="detail-row">
+                        <div class="detail-label">👤 Логин</div>
+                        <div class="detail-value-group">
+                            <input 
+                                id="loginInput" 
+                                type="text" 
+                                class="detail-input"
+                                placeholder="Введите логин"
+                            />
+                            <button class="btn-copy" data-field="login">📋</button>
+                        </div>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="detail-row">
+                        <div class="detail-label">🔑 Пароль</div>
+                        <div class="detail-value-group">
+                            <input 
+                                id="passwordInput" 
+                                type="password" 
+                                class="detail-input"
+                                placeholder="Введите пароль"
+                            />
+                            <button id="revealBtn" class="btn-reveal">👁️</button>
+                            <button class="btn-copy" data-field="password">📋</button>
+                        </div>
+                    </div>
+
+                    <!-- Phone -->
+                    <div class="detail-row">
+                        <div class="detail-label">📱 Телефон</div>
+                        <div class="detail-value-group">
+                            <input 
+                                id="phoneInput" 
+                                type="tel" 
+                                class="detail-input"
+                                placeholder="Введите телефон"
+                            />
+                            <button class="btn-copy" data-field="phone">📋</button>
+                        </div>
+                    </div>
+
+                    <!-- Email -->
+                    <div class="detail-row">
+                        <div class="detail-label">📧 Почта</div>
+                        <div class="detail-value-group">
+                            <input 
+                                id="emailInput" 
+                                type="email" 
+                                class="detail-input"
+                                placeholder="Введите почту"
+                            />
+                            <button class="btn-copy" data-field="email">📋</button>
+                        </div>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="detail-info">
+                        <span id="modifiedInfo" class="text-secondary">Последнее изменение: -</span>
+                    </div>
+                </div>
+
+                <button id="saveDetailsBtn" class="btn btn-primary full-width">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,484 @@
+// ============================================
+// TELEGRAM MINI APP - CHECKLIST
+// ============================================
+
+class ChecklistApp {
+  constructor() {
+    this.checklists = [];
+    this.currentChecklistId = null;
+    this.currentItemId = null;
+    this.userId = null;
+    this.isAdmin = false;
+    this.groupId = 'default-group';
+    
+    // Initialize Telegram Web App
+    this.initTelegram();
+    
+    // Initialize Socket.io
+    this.socket = io();
+    this.setupSocketEvents();
+    
+    // Setup UI events
+    this.setupEventListeners();
+    
+    // Authenticate and load data
+    this.authenticate();
+  }
+
+  // ============================================
+  // TELEGRAM INITIALIZATION
+  // ============================================
+
+  initTelegram() {
+    if (window.Telegram && window.Telegram.WebApp) {
+      const webApp = window.Telegram.WebApp;
+      webApp.ready();
+      
+      // Set header color
+      webApp.setHeaderColor('#1a1f2b');
+      webApp.setBackgroundColor('#0f1419');
+      
+      // Get group ID if available
+      const chat = webApp.initDataUnsafe?.chat;
+      if (chat) {
+        this.groupId = chat.id.toString();
+      }
+    }
+  }
+
+  // ============================================
+  // AUTHENTICATION
+  // ============================================
+
+  async authenticate() {
+    try {
+      // Get initData from Telegram Web App
+      const initData = window.Telegram?.WebApp?.initData;
+      
+      if (!initData) {
+        // Development mode
+        console.log('⚠️  Development mode - no Telegram initData');
+        this.userId = 'dev-' + Math.random().toString(36).substr(2, 9);
+        this.loadChecklists();
+        return;
+      }
+
+      // Send initData to server for verification
+      const response = await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData })
+      });
+
+      if (!response.ok) {
+        throw new Error('Auth failed');
+      }
+
+      const data = await response.json();
+      this.userId = data.userId;
+      this.isAdmin = data.isAdmin;
+
+      console.log('✅ Authenticated as:', this.userId, 'Admin:', this.isAdmin);
+      
+      this.loadChecklists();
+    } catch (err) {
+      console.error('Auth error:', err);
+      this.showNotification('❌ Ошибка авторизации');
+    }
+  }
+
+  // ============================================
+  // SOCKET.IO EVENTS
+  // ============================================
+
+  setupSocketEvents() {
+    // Initial data
+    this.socket.on('init', (data) => {
+      console.log('Initialized with data');
+      this.checklists = Array.isArray(data.checklists) 
+        ? data.checklists 
+        : Object.values(data.checklists || {});
+      this.renderChecklistsList();
+    });
+
+    // New checklist created
+    this.socket.on('checklistCreated', (checklist) => {
+      console.log('Checklist created:', checklist);
+      this.checklists.push(checklist);
+      this.renderChecklistsList();
+      this.showNotification('✅ Чеклист создан');
+    });
+
+    // Item status updated
+    this.socket.on('itemUpdated', (data) => {
+      const { checklistId, itemId, status, emoji, modifiedBy } = data;
+      const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId);
+      
+      if (checklist) {
+        const item = checklist.items.find(i => i._id === itemId || i.id === itemId);
+        if (item) {
+          item.status = status;
+          item.emoji = emoji;
+          if (this.currentChecklistId === checklistId) {
+            this.renderChecklistItems();
+            if (modifiedBy !== this.userId) {
+              this.showNotification('🔄 Обновлено');
+            }
+          }
+        }
+      }
+    });
+
+    // Item details updated
+    this.socket.on('detailsUpdated', (data) => {
+      const { checklistId, itemId, details, modifiedBy } = data;
+      const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId);
+      
+      if (checklist) {
+        const item = checklist.items.find(i => i._id === itemId || i.id === itemId);
+        if (item) {
+          item.details = details;
+          if (this.currentItemId === itemId) {
+            this.updateDetailsModal(item);
+          }
+        }
+      }
+    });
+
+    // Emoji updated
+    this.socket.on('emojiUpdated', (data) => {
+      const { checklistId, itemId, emoji } = data;
+      const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId);
+      
+      if (checklist) {
+        const item = checklist.items.find(i => i._id === itemId || i.id === itemId);
+        if (item) {
+          item.emoji = emoji;
+          if (this.currentChecklistId === checklistId) {
+            this.renderChecklistItems();
+          }
+        }
+      }
+    });
+
+    // Checklist deleted
+    this.socket.on('checklistDeleted', (data) => {
+      const { checklistId } = data;
+      this.checklists = this.checklists.filter(c => c._id !== checklistId && c.id !== checklistId);
+      if (this.currentChecklistId === checklistId) {
+        this.showChecklistScreen(null);
+      }
+      this.renderChecklistsList();
+      this.showNotification('🗑️ Чеклист удален');
+    });
+  }
+
+  // ============================================
+  // EVENT LISTENERS
+  // ============================================
+
+  setupEventListeners() {
+    // Create new checklist
+    document.getElementById('addBtn').addEventListener('click', () => {
+      this.showCreateModal();
+    });
+
+    // Cancel create
+    document.getElementById('cancelBtn').addEventListener('click', () => {
+      this.hideCreateModal();
+    });
+
+    // Create checklist
+    document.getElementById('createBtn').addEventListener('click', () => {
+      this.createChecklist();
+    });
+
+    // Back button
+    document.getElementById('backBtn').addEventListener('click', () => {
+      this.showChecklistScreen(null);
+    });
+
+    // Delete checklist
+    document.getElementById('deleteBtn').addEventListener('click', () => {
+      if (confirm('⚠️ Вы уверены? Это действие нельзя отменить.')) {
+        this.socket.emit('deleteChecklist', { checklistId: this.currentChecklistId });
+      }
+    });
+
+    // Close details modal
+    document.getElementById('closeDetailsBtn').addEventListener('click', () => {
+      this.hideDetailsModal();
+    });
+
+    // Save details
+    document.getElementById('saveDetailsBtn').addEventListener('click', () => {
+      this.saveItemDetails();
+    });
+
+    // Copy buttons
+    document.querySelectorAll('.btn-copy').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const field = e.target.dataset.field;
+        const input = document.getElementById(field + 'Input');
+        this.copyToClipboard(input.value, field);
+      });
+    });
+
+    // Reveal password
+    document.getElementById('revealBtn').addEventListener('click', () => {
+      const input = document.getElementById('passwordInput');
+      const btn = document.getElementById('revealBtn');
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = '🙈';
+      } else {
+        input.type = 'password';
+        btn.textContent = '👁️';
+      }
+    });
+
+    // Enter key on name input
+    document.getElementById('nameInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        this.createChecklist();
+      }
+    });
+  }
+
+  // ============================================
+  // MODALS
+  // ============================================
+
+  showCreateModal() {
+    const modal = document.getElementById('createModal');
+    const input = document.getElementById('nameInput');
+    modal.classList.remove('hidden');
+    input.value = '';
+    input.focus();
+  }
+
+  hideCreateModal() {
+    document.getElementById('createModal').classList.add('hidden');
+  }
+
+  showDetailsModal(checklistId, itemId) {
+    const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId);
+    const item = checklist.items.find(i => i._id === itemId || i.id === itemId);
+
+    if (!item) return;
+
+    this.currentItemId = itemId;
+    document.getElementById('detailsTitle').textContent = item.name;
+    
+    // Fill in details
+    document.getElementById('loginInput').value = item.details?.login || '';
+    document.getElementById('passwordInput').value = item.details?.password || '';
+    document.getElementById('phoneInput').value = item.details?.phone || '';
+    document.getElementById('emailInput').value = item.details?.email || '';
+
+    // Show last modified info
+    if (item.lastModified) {
+      const date = new Date(item.lastModified);
+      const timeStr = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('modifiedInfo').textContent = `Обновлено: ${timeStr}`;
+    }
+
+    document.getElementById('detailsModal').classList.remove('hidden');
+  }
+
+  hideDetailsModal() {
+    document.getElementById('detailsModal').classList.add('hidden');
+    this.currentItemId = null;
+  }
+
+  updateDetailsModal(item) {
+    document.getElementById('loginInput').value = item.details?.login || '';
+    document.getElementById('passwordInput').value = item.details?.password || '';
+    document.getElementById('phoneInput').value = item.details?.phone || '';
+    document.getElementById('emailInput').value = item.details?.email || '';
+  }
+
+  // ============================================
+  // CREATE CHECKLIST
+  // ============================================
+
+  createChecklist() {
+    const name = document.getElementById('nameInput').value.trim();
+    
+    if (!name) {
+      this.showNotification('⚠️ Введите имя чеклиста');
+      return;
+    }
+
+    if (name.length > 50) {
+      this.showNotification('⚠️ Имя слишком длинное');
+      return;
+    }
+
+    this.socket.emit('createChecklist', {
+      name,
+      userId: this.userId,
+      groupId: this.groupId
+    });
+
+    this.hideCreateModal();
+    this.showNotification('⏳ Создание...');
+  }
+
+  // ============================================
+  // CHECKLIST OPERATIONS
+  // ============================================
+
+  showChecklistScreen(checklistId) {
+    if (checklistId === null) {
+      document.getElementById('listScreen').classList.remove('hidden');
+      document.getElementById('checklistScreen').classList.add('hidden');
+      this.currentChecklistId = null;
+      return;
+    }
+
+    this.currentChecklistId = checklistId;
+    const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId);
+    
+    document.getElementById('checklistTitle').textContent = checklist.name;
+    document.getElementById('checklistScreen').classList.remove('hidden');
+    document.getElementById('listScreen').classList.add('hidden');
+    
+    this.renderChecklistItems();
+  }
+
+  updateItemStatus(checklistId, itemId) {
+    this.socket.emit('updateItemStatus', {
+      checklistId,
+      itemId,
+      userId: this.userId
+    });
+  }
+
+  saveItemDetails() {
+    const checklist = this.checklists.find(c => c._id === this.currentChecklistId || c.id === this.currentChecklistId);
+    const item = checklist.items.find(i => i._id === this.currentItemId || i.id === this.currentItemId);
+
+    const details = {
+      login: document.getElementById('loginInput').value,
+      password: document.getElementById('passwordInput').value,
+      phone: document.getElementById('phoneInput').value,
+      email: document.getElementById('emailInput').value
+    };
+
+    this.socket.emit('updateItemDetails', {
+      checklistId: this.currentChecklistId,
+      itemId: this.currentItemId,
+      details,
+      userId: this.userId
+    });
+
+    this.hideDetailsModal();
+    this.showNotification('💾 Сохранено');
+  }
+
+  // ============================================
+  // RENDERING
+  // ============================================
+
+  loadChecklists() {
+    this.socket.emit('init', { groupId: this.groupId });
+  }
+
+  renderChecklistsList() {
+    const listContainer = document.getElementById('checklistsList');
+    const emptyState = document.getElementById('emptyState');
+    
+    if (this.checklists.length === 0) {
+      listContainer.innerHTML = '';
+      emptyState.style.display = 'flex';
+      return;
+    }
+
+    emptyState.style.display = 'none';
+
+    listContainer.innerHTML = this.checklists
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .map(checklist => {
+        const completedCount = checklist.items.filter(i => i.status === 'APPROVED').length;
+        const totalCount = checklist.items.length;
+        const checklistId = checklist._id || checklist.id;
+
+        return `
+          <div class="checklist-item" onclick="app.showChecklistScreen('${checklistId}')">
+            <div class="checklist-info">
+              <div class="checklist-name">${this.escapeHtml(checklist.name)}</div>
+              <div class="checklist-count">
+                ✔️ ${completedCount} / ${totalCount}
+              </div>
+            </div>
+            <div class="checklist-arrow">→</div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  renderChecklistItems() {
+    const itemsContainer = document.getElementById('itemsList');
+    const checklist = this.checklists.find(c => c._id === this.currentChecklistId || c.id === this.currentChecklistId);
+
+    itemsContainer.innerHTML = checklist.items
+      .map(item => {
+        const itemId = item._id || item.id;
+        const checklistId = checklist._id || checklist.id;
+        return `
+          <div class="item">
+            <div class="item-status" onclick="event.stopPropagation(); app.updateItemStatus('${checklistId}', '${itemId}')">
+              ${item.emoji}
+            </div>
+            <div class="item-header" onclick="app.showDetailsModal('${checklistId}', '${itemId}')">
+              <div>
+                <div class="item-name">${this.escapeHtml(item.name)}</div>
+                ${item.lastModified ? `<div class="item-modified">Обновлено</div>` : ''}
+              </div>
+            </div>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  // ============================================
+  // UTILITIES
+  // ============================================
+
+  copyToClipboard(text, field) {
+    if (!text) {
+      this.showNotification('❌ Поле пусто');
+      return;
+    }
+
+    navigator.clipboard.writeText(text).then(() => {
+      this.showNotification(`📋 ${field.toUpperCase()} скопирован`);
+    });
+  }
+
+  showNotification(message) {
+    console.log(message);
+    // Use Telegram WebApp notification if available
+    if (window.Telegram && window.Telegram.WebApp) {
+      window.Telegram.WebApp.showPopup({
+        title: 'Уведомление',
+        message: message,
+        buttons: [{ type: 'ok' }]
+      });
+    }
+  }
+
+  escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+}
+
+// Initialize app when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  window.app = new ChecklistApp();
+});

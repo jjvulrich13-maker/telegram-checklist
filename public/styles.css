@@ -1,0 +1,519 @@
+/* ============================================
+   TELEGRAM MINI APP - TELEGRAM DARK MODE THEME
+   ============================================ */
+
+:root {
+  /* Telegram Dark Colors */
+  --tg-bg-primary: #0f1419;
+  --tg-bg-secondary: #1a1f2b;
+  --tg-bg-tertiary: #242f3f;
+  --tg-text-primary: #ffffff;
+  --tg-text-secondary: #8a8a8a;
+  --tg-border: #2a2f38;
+  --tg-accent: #0088ff;
+  --tg-accent-hover: #0080e8;
+  --tg-accent-light: #1a8fe3;
+  --tg-success: #31a24f;
+  --tg-warning: #f39c12;
+  --tg-danger: #e74c3c;
+  --tg-info: #3498db;
+  
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 20px;
+  --spacing-2xl: 24px;
+  
+  --radius: 12px;
+  --radius-lg: 16px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background-color: var(--tg-bg-primary);
+  color: var(--tg-text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-size: 14px;
+  overflow: hidden;
+}
+
+body {
+  position: fixed;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  overflow: hidden;
+}
+
+.screen {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  transition: opacity 0.3s ease;
+}
+
+.screen.hidden {
+  display: none !important;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-lg) var(--spacing-lg) var(--spacing-md);
+  background: linear-gradient(to bottom, var(--tg-bg-secondary), var(--tg-bg-primary));
+  border-bottom: 1px solid var(--tg-border);
+  flex-shrink: 0;
+}
+
+.header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  flex: 1;
+}
+
+/* ============================================
+   BUTTONS
+   ============================================ */
+
+.btn {
+  padding: var(--spacing-md) var(--spacing-lg);
+  border: none;
+  border-radius: var(--radius);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-sm);
+  white-space: nowrap;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.btn-primary {
+  background-color: var(--tg-accent);
+  color: white;
+}
+
+.btn-primary:active {
+  background-color: var(--tg-accent-hover);
+  transform: scale(0.95);
+}
+
+.btn-secondary {
+  background-color: var(--tg-bg-tertiary);
+  color: var(--tg-text-primary);
+  border: 1px solid var(--tg-border);
+}
+
+.btn-secondary:active {
+  background-color: var(--tg-border);
+}
+
+.btn-add {
+  background: var(--tg-accent);
+  color: white;
+  border: none;
+  padding: var(--spacing-sm) var(--spacing-lg);
+  border-radius: var(--radius);
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  transition: all 0.2s ease;
+}
+
+.btn-add:active {
+  background: var(--tg-accent-hover);
+  transform: scale(0.95);
+}
+
+.btn-back, .btn-delete, .btn-close {
+  background: transparent;
+  border: none;
+  color: var(--tg-text-primary);
+  font-size: 20px;
+  cursor: pointer;
+  padding: var(--spacing-md);
+  transition: opacity 0.2s ease;
+}
+
+.btn-back:active, .btn-delete:active, .btn-close:active {
+  opacity: 0.6;
+}
+
+.btn-icon {
+  font-size: 18px;
+}
+
+.btn-copy, .btn-reveal {
+  background: var(--tg-bg-tertiary);
+  border: 1px solid var(--tg-border);
+  color: var(--tg-text-primary);
+  border-radius: var(--radius);
+  padding: var(--spacing-sm) var(--spacing-md);
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.btn-copy:active, .btn-reveal:active {
+  background: var(--tg-border);
+  transform: scale(0.95);
+}
+
+.full-width {
+  width: 100%;
+}
+
+/* ============================================
+   LISTS & ITEMS
+   ============================================ */
+
+.checklists-list, .items-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.checklist-item, .item {
+  background: var(--tg-bg-secondary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md) var(--spacing-lg);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.checklist-item:active, .item:active {
+  background: var(--tg-bg-tertiary);
+  border-color: var(--tg-accent);
+}
+
+.checklist-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.checklist-name, .item-name {
+  font-weight: 600;
+  color: var(--tg-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.checklist-count {
+  font-size: 12px;
+  color: var(--tg-text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+.item-header {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.item-status {
+  font-size: 24px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.item-status:active {
+  transform: scale(1.2);
+}
+
+.item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.item-modified {
+  font-size: 11px;
+  color: var(--tg-text-secondary);
+  margin-top: var(--spacing-xs);
+}
+
+.checklist-arrow {
+  color: var(--tg-text-secondary);
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+/* ============================================
+   EMPTY STATE
+   ============================================ */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  text-align: center;
+  color: var(--tg-text-secondary);
+}
+
+.empty-state p {
+  margin: var(--spacing-sm);
+}
+
+.empty-state p:first-child {
+  font-size: 48px;
+  margin: 0;
+}
+
+/* ============================================
+   MODALS
+   ============================================ */
+
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: flex-end;
+  z-index: 1000;
+  animation: slideUp 0.3s ease;
+}
+
+.modal.hidden {
+  display: none !important;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background: var(--tg-bg-secondary);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  padding: var(--spacing-xl);
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.modal-content h2 {
+  font-size: 18px;
+  margin-bottom: var(--spacing-lg);
+  color: var(--tg-text-primary);
+}
+
+.modal-buttons {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-xl);
+}
+
+.modal-buttons .btn {
+  flex: 1;
+}
+
+.input {
+  width: 100%;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--tg-bg-tertiary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius);
+  color: var(--tg-text-primary);
+  font-size: 14px;
+  margin-bottom: var(--spacing-lg);
+  transition: border-color 0.2s ease;
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--tg-accent);
+}
+
+.input::placeholder {
+  color: var(--tg-text-secondary);
+}
+
+/* ============================================
+   DETAILS MODAL
+   ============================================ */
+
+.details-modal {
+  align-items: flex-end;
+}
+
+.details-content {
+  max-height: 85vh;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-xl);
+  padding-bottom: var(--spacing-lg);
+  border-bottom: 1px solid var(--tg-border);
+}
+
+.modal-header h2 {
+  margin: 0;
+}
+
+.details-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-lg);
+  margin-bottom: var(--spacing-xl);
+}
+
+.detail-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.detail-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tg-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value-group {
+  display: flex;
+  gap: var(--spacing-md);
+  align-items: center;
+}
+
+.detail-input {
+  flex: 1;
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--tg-bg-tertiary);
+  border: 1px solid var(--tg-border);
+  border-radius: var(--radius);
+  color: var(--tg-text-primary);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.detail-input:focus {
+  outline: none;
+  border-color: var(--tg-accent);
+}
+
+.detail-input::placeholder {
+  color: var(--tg-text-secondary);
+}
+
+.detail-info {
+  padding: var(--spacing-md) var(--spacing-lg);
+  background: var(--tg-bg-tertiary);
+  border-radius: var(--radius);
+  font-size: 12px;
+  color: var(--tg-text-secondary);
+}
+
+/* ============================================
+   SCROLLBAR STYLING
+   ============================================ */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--tg-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--tg-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--tg-text-secondary);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 480px) {
+  .header {
+    padding: var(--spacing-md);
+  }
+
+  .checklists-list, .items-list {
+    padding: var(--spacing-md);
+    gap: var(--spacing-sm);
+  }
+
+  .checklist-item, .item {
+    padding: var(--spacing-md);
+  }
+
+  .detail-value-group {
+    flex-wrap: wrap;
+  }
+
+  .btn-copy, .btn-reveal {
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 11px;
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+.text-secondary {
+  color: var(--tg-text-secondary);
+}
+
+.text-center {
+  text-align: center;
+}
