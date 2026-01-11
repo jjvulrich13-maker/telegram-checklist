@@ -1,0 +1,14 @@
+node_modules
+.git
+.gitignore
+.env
+.DS_Store
+README.md
+SETUP.md
+DEPLOYMENT.md
+USAGE.md
+QUICKSTART.md
+COMPLETE.md
+FILES.md
+SUPABASE_SETUP.md
+*.md
