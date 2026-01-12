@@ -308,14 +308,14 @@ if (BOT_TOKEN) {
       // web_app works in private chats
       return {
         inline_keyboard: [
-          [{ text: '📋 Open Checklist', web_app: { url: WEB_APP_URL } }]
+          [{ text: '📋 FULL WORK', web_app: { url: WEB_APP_URL } }]
         ]
       };
     } else {
       // For groups, use URL that opens bot with Mini App
       return {
         inline_keyboard: [
-          [{ text: '📋 Open Checklist', url: `https://t.me/${BOT_USERNAME}?startapp=open` }]
+          [{ text: '📋 FULL WORK', url: `https://t.me/${BOT_USERNAME}?startapp=open` }]
         ]
       };
     }
@@ -368,8 +368,7 @@ if (BOT_TOKEN) {
     const keyboard = getAppKeyboard(msg.chat.type);
 
     bot.sendMessage(chatId, 
-      '📋 Welcome to Telegram Checklist!\n\n' +
-      'Click the button below to open the app:',
+      'Тыкай бебезьян',
       { reply_markup: keyboard }
     );
   });
@@ -380,7 +379,7 @@ if (BOT_TOKEN) {
     const keyboard = getAppKeyboard(msg.chat.type);
 
     bot.sendMessage(chatId, 
-      '📋 Click the button to open the Checklist App:',
+      'Тыкай бебезьян',
       { reply_markup: keyboard }
     );
   });
@@ -391,7 +390,7 @@ if (BOT_TOKEN) {
     const keyboard = getAppKeyboard(msg.chat.type);
 
     bot.sendMessage(chatId, 
-      '📋 Click the button to open the Checklist App:',
+      'Тыкай бебезьян',
       { reply_markup: keyboard }
     );
   });
@@ -409,17 +408,16 @@ if (BOT_TOKEN) {
     // Use URL button for groups (web_app doesn't work in groups)
     const keyboard = {
       inline_keyboard: [
-        [{ text: '📋 Open Checklist', url: `https://t.me/${BOT_USERNAME}?startapp=open` }]
+        [{ text: '📋 FULL WORK', url: `https://t.me/${BOT_USERNAME}?startapp=open` }]
       ]
     };
 
     try {
       // Send message with button
       const sentMsg = await bot.sendMessage(chatId, 
-        '📋 *Team Checklist*\n\nClick the button below to open the checklist app:',
+        'Тыкай бебезьян',
         { 
-          reply_markup: keyboard,
-          parse_mode: 'Markdown'
+          reply_markup: keyboard
         }
       );
       
