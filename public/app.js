@@ -171,6 +171,12 @@ class ChecklistApp {
       this.renderChecklistsList();
       this.showNotification('🗑️ Checklist deleted');
     });
+
+    // Template updated by admin - refresh data
+    this.socket.on('templateUpdated', () => {
+      this.showNotification('🔄 Template updated, refreshing...');
+      this.loadChecklists();
+    });
   }
 
   // ============================================

@@ -80,24 +80,133 @@ async function initializeDatabase() {
   }
 }
 
-const BANK_TEMPLATE = [
+// Default bank template (will be loaded from DB if available)
+let BANK_TEMPLATE = [
   { id: 1, name: 'Amazon', status: 'NOT_STARTED', emoji: '⬜' },
-  { id: 2, name: 'Wamo', status: 'DECLINED', emoji: '❌' },
-  { id: 3, name: 'Paysera Business + звонок +bitget/okx', status: 'APPROVED', emoji: '✅' },
-  { id: 4, name: 'Paynovus + звонок', status: 'APPROVED', emoji: '✅' },
-  { id: 5, name: 'ICard + звонок', status: 'APPROVED', emoji: '✅' },
-  { id: 6, name: 'Mifinity', status: 'APPROVED', emoji: '✅' },
-  { id: 7, name: 'Revolut', status: 'DECLINED', emoji: '❌' },
-  { id: 8, name: 'OpenPayd', status: 'IN_PROGRESS', emoji: '💤' },
-  { id: 9, name: 'Finom', status: 'DECLINED', emoji: '❌' },
-  { id: 10, name: 'Zen', status: 'DECLINED', emoji: '❌' },
+  { id: 2, name: 'Wamo', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 3, name: 'Paysera Business', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 4, name: 'Paynovus', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 5, name: 'ICard', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 6, name: 'Mifinity', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 7, name: 'Revolut', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 8, name: 'OpenPayd', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 9, name: 'Finom', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 10, name: 'Zen', status: 'NOT_STARTED', emoji: '⬜' },
   { id: 11, name: 'Genome', status: 'NOT_STARTED', emoji: '⬜' },
-  { id: 12, name: 'Multipass', status: 'IN_PROGRESS', emoji: '💤' },
-  { id: 13, name: 'Sokin', status: 'DECLINED', emoji: '❌' },
-  { id: 14, name: 'Brighty', status: 'IN_PROGRESS', emoji: '💤' },
-  { id: 15, name: 'Unlimit', status: 'IN_PROGRESS', emoji: '💤' },
+  { id: 12, name: 'Multipass', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 13, name: 'Sokin', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 14, name: 'Brighty', status: 'NOT_STARTED', emoji: '⬜' },
+  { id: 15, name: 'Unlimit', status: 'NOT_STARTED', emoji: '⬜' },
   { id: 16, name: 'Satchel', status: 'NOT_STARTED', emoji: '⬜' }
 ];
+
+// Load bank template from database
+async function loadBankTemplate() {
+  if (!supabase) return;
+  try {
+    const { data } = await supabase
+      .from('settings')
+      .select('value')
+      .eq('key', 'bank_template')
+      .single();
+    
+    if (data && data.value) {
+      BANK_TEMPLATE = JSON.parse(data.value);
+      console.log('✅ Bank template loaded from DB');
+    }
+  } catch (err) {
+    console.log('⚠️  Using default bank template');
+  }
+}
+
+// Save bank template to database
+async function saveBankTemplate() {
+  if (!supabase) return false;
+  try {
+    await supabase
+      .from('settings')
+      .upsert({
+        key: 'bank_template',
+        value: JSON.stringify(BANK_TEMPLATE),
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'key' });
+    return true;
+  } catch (err) {
+    console.error('Error saving bank template:', err);
+    return false;
+  }
+}
+
+// Sync bank template to all existing checklists (add new banks, keep existing statuses)
+async function syncBankTemplateToChecklists() {
+  if (!supabase) return { success: false, updated: 0 };
+  
+  try {
+    // Get all checklists
+    const { data: checklists, error } = await supabase
+      .from('checklists')
+      .select('*');
+    
+    if (error) throw error;
+    
+    let updatedCount = 0;
+    
+    for (const checklist of checklists || []) {
+      const existingItems = typeof checklist.items === 'string' 
+        ? JSON.parse(checklist.items) 
+        : checklist.items;
+      
+      // Create map of existing items by name for quick lookup
+      const existingByName = {};
+      existingItems.forEach(item => {
+        existingByName[item.name.toLowerCase()] = item;
+      });
+      
+      // Build new items array
+      const newItems = BANK_TEMPLATE.map(templateItem => {
+        const existing = existingByName[templateItem.name.toLowerCase()];
+        if (existing) {
+          // Keep existing status, emoji and details
+          return {
+            ...templateItem,
+            status: existing.status,
+            emoji: existing.emoji,
+            details: existing.details || {},
+            lastModified: existing.lastModified,
+            modifiedBy: existing.modifiedBy
+          };
+        } else {
+          // New item - use template defaults
+          return {
+            ...templateItem,
+            details: { login: '', password: '', phone: '', email: '' },
+            lastModified: new Date().toISOString(),
+            modifiedBy: 'system'
+          };
+        }
+      });
+      
+      // Update checklist
+      await supabase
+        .from('checklists')
+        .update({
+          items: JSON.stringify(newItems),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', checklist.id);
+      
+      updatedCount++;
+    }
+    
+    return { success: true, updated: updatedCount };
+  } catch (err) {
+    console.error('Sync error:', err);
+    return { success: false, updated: 0, error: err.message };
+  }
+}
+
+// Load template on startup
+loadBankTemplate();
 
 const statusCycle = ['NOT_STARTED', 'IN_PROGRESS', 'APPROVED', 'DECLINED'];
 const statusEmoji = {
@@ -347,6 +456,196 @@ if (BOT_TOKEN) {
       bot.sendMessage(chatId, `👨‍💼 Список админов:\n${adminList || 'Нет админов'}`);
     } catch (err) {
       bot.sendMessage(chatId, `❌ Ошибка: ${err.message}`);
+    }
+  });
+
+  // ============================================
+  // BANK TEMPLATE MANAGEMENT (Admin only)
+  // ============================================
+
+  // /banks - Show current bank list
+  bot.onText(/\/banks/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+
+    if (!supabase) {
+      bot.sendMessage(chatId, '❌ Database not connected');
+      return;
+    }
+
+    const { data: userData } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('telegram_id', userId)
+      .single();
+
+    if (!userData || !userData.is_admin) {
+      bot.sendMessage(chatId, '❌ Admin only');
+      return;
+    }
+
+    const bankList = BANK_TEMPLATE
+      .map(b => `${b.id}. ${b.name}`)
+      .join('\n');
+
+    bot.sendMessage(chatId, 
+      `🏦 *Bank Template* (${BANK_TEMPLATE.length} items):\n\n${bankList}\n\n` +
+      `Commands:\n` +
+      `/addbank Name - Add new bank\n` +
+      `/delbank 5 - Delete bank by ID\n` +
+      `/renamebank 5 New Name - Rename bank\n` +
+      `/syncbanks - Apply to all checklists`,
+      { parse_mode: 'Markdown' }
+    );
+  });
+
+  // /addbank <name> - Add new bank
+  bot.onText(/\/addbank (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+    const bankName = match[1].trim();
+
+    if (!supabase) {
+      bot.sendMessage(chatId, '❌ Database not connected');
+      return;
+    }
+
+    const { data: userData } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('telegram_id', userId)
+      .single();
+
+    if (!userData || !userData.is_admin) {
+      bot.sendMessage(chatId, '❌ Admin only');
+      return;
+    }
+
+    // Get next ID
+    const maxId = Math.max(...BANK_TEMPLATE.map(b => b.id), 0);
+    const newBank = {
+      id: maxId + 1,
+      name: bankName,
+      status: 'NOT_STARTED',
+      emoji: '⬜'
+    };
+
+    BANK_TEMPLATE.push(newBank);
+    
+    if (await saveBankTemplate()) {
+      bot.sendMessage(chatId, `✅ Added: ${newBank.id}. ${bankName}\n\nUse /syncbanks to apply to existing checklists`);
+    } else {
+      bot.sendMessage(chatId, '❌ Error saving');
+    }
+  });
+
+  // /delbank <id> - Delete bank by ID
+  bot.onText(/\/delbank (\d+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+    const bankId = parseInt(match[1]);
+
+    if (!supabase) {
+      bot.sendMessage(chatId, '❌ Database not connected');
+      return;
+    }
+
+    const { data: userData } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('telegram_id', userId)
+      .single();
+
+    if (!userData || !userData.is_admin) {
+      bot.sendMessage(chatId, '❌ Admin only');
+      return;
+    }
+
+    const bank = BANK_TEMPLATE.find(b => b.id === bankId);
+    if (!bank) {
+      bot.sendMessage(chatId, `❌ Bank with ID ${bankId} not found`);
+      return;
+    }
+
+    BANK_TEMPLATE = BANK_TEMPLATE.filter(b => b.id !== bankId);
+    
+    if (await saveBankTemplate()) {
+      bot.sendMessage(chatId, `✅ Deleted: ${bank.name}\n\nUse /syncbanks to apply to existing checklists`);
+    } else {
+      bot.sendMessage(chatId, '❌ Error saving');
+    }
+  });
+
+  // /renamebank <id> <new name> - Rename bank
+  bot.onText(/\/renamebank (\d+) (.+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+    const bankId = parseInt(match[1]);
+    const newName = match[2].trim();
+
+    if (!supabase) {
+      bot.sendMessage(chatId, '❌ Database not connected');
+      return;
+    }
+
+    const { data: userData } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('telegram_id', userId)
+      .single();
+
+    if (!userData || !userData.is_admin) {
+      bot.sendMessage(chatId, '❌ Admin only');
+      return;
+    }
+
+    const bank = BANK_TEMPLATE.find(b => b.id === bankId);
+    if (!bank) {
+      bot.sendMessage(chatId, `❌ Bank with ID ${bankId} not found`);
+      return;
+    }
+
+    const oldName = bank.name;
+    bank.name = newName;
+    
+    if (await saveBankTemplate()) {
+      bot.sendMessage(chatId, `✅ Renamed: "${oldName}" → "${newName}"\n\nUse /syncbanks to apply to existing checklists`);
+    } else {
+      bot.sendMessage(chatId, '❌ Error saving');
+    }
+  });
+
+  // /syncbanks - Apply template to all existing checklists
+  bot.onText(/\/syncbanks/, async (msg) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id.toString();
+
+    if (!supabase) {
+      bot.sendMessage(chatId, '❌ Database not connected');
+      return;
+    }
+
+    const { data: userData } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('telegram_id', userId)
+      .single();
+
+    if (!userData || !userData.is_admin) {
+      bot.sendMessage(chatId, '❌ Admin only');
+      return;
+    }
+
+    bot.sendMessage(chatId, '⏳ Syncing...');
+
+    const result = await syncBankTemplateToChecklists();
+    
+    if (result.success) {
+      // Notify all connected clients to refresh
+      io.emit('templateUpdated', { template: BANK_TEMPLATE });
+      bot.sendMessage(chatId, `✅ Done! Updated ${result.updated} checklists.\n\nUsers will see changes after refresh.`);
+    } else {
+      bot.sendMessage(chatId, `❌ Error: ${result.error || 'Unknown error'}`);
     }
   });
 
