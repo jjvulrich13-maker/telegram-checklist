@@ -36,6 +36,19 @@ app.get('/healthz', (req, res) => {
 });
 
 // ============================================
+// TELEGRAM WEBHOOK ENDPOINT
+// ============================================
+const BOT_TOKEN_FOR_WEBHOOK = process.env.TELEGRAM_BOT_TOKEN;
+if (BOT_TOKEN_FOR_WEBHOOK) {
+  app.post(`/bot${BOT_TOKEN_FOR_WEBHOOK}`, (req, res) => {
+    if (bot) {
+      bot.processUpdate(req.body);
+    }
+    res.sendStatus(200);
+  });
+}
+
+// ============================================
 // SUPABASE CONNECTION
 // ============================================
 
@@ -103,6 +116,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // Only use polling in development, not on Railway (to avoid conflicts)
 const usePolling = !process.env.RAILWAY_ENVIRONMENT;
+const WEBHOOK_URL = 'https://telegram-checklist-production.up.railway.app';
 
 if (BOT_TOKEN) {
   if (usePolling) {
@@ -110,8 +124,19 @@ if (BOT_TOKEN) {
     console.log('✅ Telegram Bot connected (polling mode)');
   } else {
     bot = new TelegramBot(BOT_TOKEN, { polling: false });
-    console.log('✅ Telegram Bot connected (webhook mode - polling disabled)');
+    
+    // Set up webhook for Railway
+    bot.setWebHook(`${WEBHOOK_URL}/bot${BOT_TOKEN}`).then(() => {
+      console.log('✅ Telegram Bot webhook set');
+    }).catch(err => {
+      console.error('❌ Failed to set webhook:', err.message);
+    });
+    
+    console.log('✅ Telegram Bot connected (webhook mode)');
   }
+
+  // Get the Web App URL
+  const WEB_APP_URL = process.env.WEB_APP_URL || 'https://telegram-checklist-production.up.railway.app';
 
   // Bot command handlers
   bot.onText(/\/start/, async (msg) => {
@@ -133,14 +158,88 @@ if (BOT_TOKEN) {
       console.error('Error saving user:', err);
     }
 
+    const keyboard = {
+      inline_keyboard: [
+        [{ text: '📋 Open Checklist App', web_app: { url: WEB_APP_URL } }]
+      ]
+    };
+
     bot.sendMessage(chatId, 
-      '📋 Привет! Добро пожаловать в Telegram Checklist\n\n' +
-      'Команды:\n' +
-      '/admin <user_id> - Сделать админом\n' +
-      '/unadmin <user_id> - Убрать из админов\n' +
-      '/admins - Список всех админов\n' +
-      '/app - Открыть приложение'
+      '📋 Welcome to Telegram Checklist!\n\n' +
+      'Click the button below to open the app:\n\n' +
+      'Commands:\n' +
+      '/checklist - Open checklist app\n' +
+      '/admin <user_id> - Make admin\n' +
+      '/admins - List all admins',
+      { reply_markup: keyboard }
     );
+  });
+
+  // Command to open app (works in groups)
+  bot.onText(/\/checklist/, async (msg) => {
+    const chatId = msg.chat.id;
+    
+    const keyboard = {
+      inline_keyboard: [
+        [{ text: '📋 Open Checklist App', web_app: { url: WEB_APP_URL } }]
+      ]
+    };
+
+    bot.sendMessage(chatId, 
+      '📋 Click the button to open the Checklist App:',
+      { reply_markup: keyboard }
+    );
+  });
+
+  // Command /app as alias
+  bot.onText(/\/app/, async (msg) => {
+    const chatId = msg.chat.id;
+    
+    const keyboard = {
+      inline_keyboard: [
+        [{ text: '📋 Open Checklist App', web_app: { url: WEB_APP_URL } }]
+      ]
+    };
+
+    bot.sendMessage(chatId, 
+      '📋 Click the button to open the Checklist App:',
+      { reply_markup: keyboard }
+    );
+  });
+
+  // Command /pin - create pinned message with app button (for groups)
+  bot.onText(/\/pin/, async (msg) => {
+    const chatId = msg.chat.id;
+    
+    // Check if it's a group
+    if (msg.chat.type === 'private') {
+      bot.sendMessage(chatId, '⚠️ This command only works in groups');
+      return;
+    }
+    
+    const keyboard = {
+      inline_keyboard: [
+        [{ text: '📋 Open Checklist', web_app: { url: WEB_APP_URL } }]
+      ]
+    };
+
+    try {
+      // Send message with button
+      const sentMsg = await bot.sendMessage(chatId, 
+        '📋 **Team Checklist**\n\nClick the button below to open the checklist app:',
+        { 
+          reply_markup: keyboard,
+          parse_mode: 'Markdown'
+        }
+      );
+      
+      // Pin the message
+      await bot.pinChatMessage(chatId, sentMsg.message_id, { disable_notification: true });
+      
+    } catch (err) {
+      console.error('Error pinning message:', err.message);
+      bot.sendMessage(chatId, '❌ Could not pin message. Make sure bot has "Pin Messages" admin right.');
+    }
   });
 
   bot.onText(/\/admin (.+)/, async (msg, match) => {
@@ -149,7 +248,7 @@ if (BOT_TOKEN) {
     const targetUserId = match[1].trim();
 
     if (!supabase) {
-      bot.sendMessage(chatId, '❌ База данных не подключена');
+      bot.sendMessage(chatId, '❌ Database not connected');
       return;
     }
 
@@ -161,7 +260,7 @@ if (BOT_TOKEN) {
       .single();
 
     if (!senderData || !senderData.is_admin) {
-      bot.sendMessage(chatId, '❌ У вас нет прав. Только админы могут это делать.');
+      bot.sendMessage(chatId, '❌ Access denied. Only admins can do this.');
       return;
     }
 
@@ -173,9 +272,9 @@ if (BOT_TOKEN) {
           is_admin: true
         }, { onConflict: 'telegram_id' });
 
-      bot.sendMessage(chatId, `✅ Пользователь ${targetUserId} теперь админ`);
+      bot.sendMessage(chatId, `✅ User ${targetUserId} is now admin`);
     } catch (err) {
-      bot.sendMessage(chatId, `❌ Ошибка: ${err.message}`);
+      bot.sendMessage(chatId, `❌ Error: ${err.message}`);
     }
   });
 
