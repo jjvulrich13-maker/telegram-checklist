@@ -264,13 +264,6 @@ class ChecklistApp {
     document.getElementById('phoneInput').value = item.details?.phone || '';
     document.getElementById('emailInput').value = item.details?.email || '';
 
-    // Show last modified info
-    if (item.lastModified) {
-      const date = new Date(item.lastModified);
-      const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-      document.getElementById('modifiedInfo').textContent = `Updated: ${timeStr}`;
-    }
-
     document.getElementById('detailsModal').classList.remove('hidden');
   }
 
@@ -430,7 +423,6 @@ class ChecklistApp {
             <div class="item-header" onclick="app.showDetailsModal('${checklistId}', '${itemId}')">
               <div>
                 <div class="item-name">${this.escapeHtml(item.name)}</div>
-                ${item.lastModified ? `<div class="item-modified">Updated</div>` : ''}
               </div>
             </div>
           </div>
