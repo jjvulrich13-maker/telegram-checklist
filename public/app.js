@@ -224,19 +224,6 @@ class ChecklistApp {
       });
     });
 
-    // Reveal password
-    document.getElementById('revealBtn').addEventListener('click', () => {
-      const input = document.getElementById('passwordInput');
-      const btn = document.getElementById('revealBtn');
-      if (input.type === 'password') {
-        input.type = 'text';
-        btn.textContent = '🙈';
-      } else {
-        input.type = 'password';
-        btn.textContent = '👁️';
-      }
-    });
-
     // Enter key on name input
     document.getElementById('nameInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
@@ -408,17 +395,12 @@ class ChecklistApp {
       .filter(checklist => checklist && checklist.items)
       .sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
       .map(checklist => {
-        const completedCount = checklist.items.filter(i => i.status === 'APPROVED').length;
-        const totalCount = checklist.items.length;
         const checklistId = checklist._id || checklist.id;
 
         return `
           <div class="checklist-item" onclick="app.showChecklistScreen('${checklistId}')">
             <div class="checklist-info">
               <div class="checklist-name">${this.escapeHtml(checklist.name)}</div>
-              <div class="checklist-count">
-                ✔️ ${completedCount} / ${totalCount}
-              </div>
             </div>
             <div class="checklist-arrow">→</div>
           </div>

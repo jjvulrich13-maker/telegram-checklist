@@ -81,29 +81,29 @@ async function initializeDatabase() {
 }
 
 const BANK_TEMPLATE = [
-  { id: 1, name: 'Amazon', status: 'NOT_STARTED', emoji: '🥸' },
+  { id: 1, name: 'Amazon', status: 'NOT_STARTED', emoji: '⬜' },
   { id: 2, name: 'Wamo', status: 'DECLINED', emoji: '❌' },
-  { id: 3, name: 'Paysera Business + звонок +bitget/okx', status: 'APPROVED', emoji: '✔️' },
-  { id: 4, name: 'Paynovus + звонок', status: 'APPROVED', emoji: '✔️' },
-  { id: 5, name: 'ICard + звонок', status: 'APPROVED', emoji: '✔️' },
-  { id: 6, name: 'Mifinity', status: 'APPROVED', emoji: '✔️' },
+  { id: 3, name: 'Paysera Business + звонок +bitget/okx', status: 'APPROVED', emoji: '✅' },
+  { id: 4, name: 'Paynovus + звонок', status: 'APPROVED', emoji: '✅' },
+  { id: 5, name: 'ICard + звонок', status: 'APPROVED', emoji: '✅' },
+  { id: 6, name: 'Mifinity', status: 'APPROVED', emoji: '✅' },
   { id: 7, name: 'Revolut', status: 'DECLINED', emoji: '❌' },
   { id: 8, name: 'OpenPayd', status: 'IN_PROGRESS', emoji: '💤' },
   { id: 9, name: 'Finom', status: 'DECLINED', emoji: '❌' },
   { id: 10, name: 'Zen', status: 'DECLINED', emoji: '❌' },
-  { id: 11, name: 'Genome', status: 'NOT_STARTED', emoji: '🥸' },
+  { id: 11, name: 'Genome', status: 'NOT_STARTED', emoji: '⬜' },
   { id: 12, name: 'Multipass', status: 'IN_PROGRESS', emoji: '💤' },
   { id: 13, name: 'Sokin', status: 'DECLINED', emoji: '❌' },
   { id: 14, name: 'Brighty', status: 'IN_PROGRESS', emoji: '💤' },
   { id: 15, name: 'Unlimit', status: 'IN_PROGRESS', emoji: '💤' },
-  { id: 16, name: 'Satchel', status: 'NOT_STARTED', emoji: '🥸' }
+  { id: 16, name: 'Satchel', status: 'NOT_STARTED', emoji: '⬜' }
 ];
 
 const statusCycle = ['NOT_STARTED', 'IN_PROGRESS', 'APPROVED', 'DECLINED'];
 const statusEmoji = {
-  'NOT_STARTED': '🥸',
+  'NOT_STARTED': '⬜',
   'IN_PROGRESS': '💤',
-  'APPROVED': '✔️',
+  'APPROVED': '✅',
   'DECLINED': '❌'
 };
 
@@ -737,9 +737,10 @@ io.on('connection', (socket) => {
     try {
       const { checklistId } = data;
       
+      // Actually delete from database instead of archiving
       const { error } = await supabase
         .from('checklists')
-        .update({ is_archived: true, updated_at: new Date().toISOString() })
+        .delete()
         .eq('id', checklistId);
 
       if (error) throw error;
