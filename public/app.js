@@ -2,6 +2,61 @@
 // TELEGRAM MINI APP - CHECKLIST
 // ============================================
 
+// SECURITY: Only allow access via Telegram Mini App
+(function() {
+  const tg = window.Telegram?.WebApp;
+  
+  // Check if opened inside Telegram Mini App
+  if (!tg || !tg.initData || tg.initData === '') {
+    // Not in Telegram Mini App - show error
+    document.body.innerHTML = `
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #0f1419;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+        padding: 20px;
+      ">
+        <h1 style="font-size: 48px; margin-bottom: 20px;">🚫</h1>
+        <h2 style="margin-bottom: 10px;">Access Denied</h2>
+        <p style="color: #8a8a8a;">This app is only available via Telegram.</p>
+        <p style="color: #8a8a8a; margin-top: 10px;">Open <strong>@checkAwsBot</strong> in Telegram</p>
+      </div>
+    `;
+    throw new Error('Not in Telegram Mini App');
+  }
+  
+  // Check platform - must be opened in Mini App, not browser
+  const platform = tg.platform;
+  if (platform === 'unknown') {
+    document.body.innerHTML = `
+      <div style="
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #0f1419;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        text-align: center;
+        padding: 20px;
+      ">
+        <h1 style="font-size: 48px; margin-bottom: 20px;">📱</h1>
+        <h2 style="margin-bottom: 10px;">Open in Telegram</h2>
+        <p style="color: #8a8a8a;">Please open this app through Telegram Mini App.</p>
+        <p style="color: #8a8a8a; margin-top: 10px;">Search for <strong>@checkAwsBot</strong></p>
+      </div>
+    `;
+    throw new Error('Invalid platform');
+  }
+})();
+
 class ChecklistApp {
   constructor() {
     this.checklists = [];

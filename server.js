@@ -25,8 +25,62 @@ app.use(express.json());
 // Отдача статики из папки public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Корневой маршрут
+// Корневой маршрут - redirect to Telegram bot if not in Mini App
 app.get('/', (req, res) => {
+  // Check if request has Telegram headers or is from Mini App
+  const userAgent = req.headers['user-agent'] || '';
+  const isTelegram = userAgent.toLowerCase().includes('telegram');
+  
+  if (!isTelegram) {
+    // Not from Telegram - show redirect page
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Telegram Checklist</title>
+        <style>
+          body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background: #0f1419;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            text-align: center;
+            padding: 20px;
+          }
+          h1 { font-size: 48px; margin-bottom: 20px; }
+          h2 { margin-bottom: 10px; }
+          p { color: #8a8a8a; }
+          a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 12px 24px;
+            background: #0088ff;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+          }
+          a:hover { background: #0077ee; }
+        </style>
+      </head>
+      <body>
+        <h1>📋</h1>
+        <h2>Telegram Checklist</h2>
+        <p>This app is only available via Telegram Mini App.</p>
+        <a href="https://t.me/checkAwsBot">Open in Telegram</a>
+      </body>
+      </html>
+    `);
+    return;
+  }
+  
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
@@ -819,16 +873,6 @@ if (BOT_TOKEN) {
     }
   });
 
-  bot.onText(/\/app/, (msg) => {
-    const chatId = msg.chat.id;
-    const appUrl = process.env.APP_URL || 'https://your-app.railway.app';
-    
-    bot.sendMessage(chatId, 
-      '📱 Открыть приложение:\n\n' +
-      `[Checklist App](${appUrl})`,
-      { parse_mode: 'Markdown', disable_web_page_preview: true }
-    );
-  });
 } else {
   console.log('⚠️  TELEGRAM_BOT_TOKEN не установлен - бот отключен');
 }
