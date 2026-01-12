@@ -271,20 +271,44 @@ if (BOT_TOKEN) {
   bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id.toString();
+    const username = msg.from.username;
 
-    // Save user
+    if (!supabase) {
+      bot.sendMessage(chatId, '❌ Database not connected');
+      return;
+    }
+
+    // Check if user exists in whitelist
+    const { data: existingUser } = await supabase
+      .from('users')
+      .select('*')
+      .or(`telegram_id.eq.${userId},username.ilike.${username || 'NONE'}`)
+      .single();
+
+    if (!existingUser) {
+      // User not in whitelist
+      bot.sendMessage(chatId, 
+        '❌ Access denied.\n\n' +
+        'This bot is private. Ask admin to add you.',
+        { parse_mode: 'Markdown' }
+      );
+      return;
+    }
+
+    // Update user data (fill in telegram_id if was added by username)
     try {
-      if (supabase) {
-        await supabase.from('users').upsert({
+      await supabase
+        .from('users')
+        .update({
           telegram_id: userId,
           username: msg.from.username,
           first_name: msg.from.first_name,
           last_name: msg.from.last_name,
           last_active: new Date().toISOString()
-        }, { onConflict: 'telegram_id' });
-      }
+        })
+        .eq('id', existingUser.id);
     } catch (err) {
-      console.error('Error saving user:', err);
+      console.error('Error updating user:', err);
     }
 
     const keyboard = getAppKeyboard(msg.chat.type);
@@ -456,6 +480,152 @@ if (BOT_TOKEN) {
       bot.sendMessage(chatId, `👨‍💼 Список админов:\n${adminList || 'Нет админов'}`);
     } catch (err) {
       bot.sendMessage(chatId, `❌ Ошибка: ${err.message}`);
+    }
+  });
+
+  // ============================================
+  // USER WHITELIST MANAGEMENT (Admin only)
+  // ============================================
+
+  // /adduser @username - Add user to whitelist
+  bot.onText(/\/adduser @?(\w+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const adminId = msg.from.id.toString();
+    const targetUsername = match[1].toLowerCase();
+
+    if (!supabase) {
+      bot.sendMessage(chatId, '❌ Database not connected');
+      return;
+    }
+
+    // Check if sender is admin
+    const { data: adminData } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('telegram_id', adminId)
+      .single();
+
+    if (!adminData || !adminData.is_admin) {
+      bot.sendMessage(chatId, '❌ Admin only');
+      return;
+    }
+
+    // Check if user already exists
+    const { data: existing } = await supabase
+      .from('users')
+      .select('*')
+      .ilike('username', targetUsername)
+      .single();
+
+    if (existing) {
+      bot.sendMessage(chatId, `⚠️ User @${targetUsername} already exists`);
+      return;
+    }
+
+    // Add user with just username (telegram_id will be filled when they /start)
+    try {
+      await supabase
+        .from('users')
+        .insert({
+          username: targetUsername,
+          telegram_id: null,
+          is_admin: false,
+          created_at: new Date().toISOString()
+        });
+
+      bot.sendMessage(chatId, `✅ Added @${targetUsername} to whitelist\n\nThey can now use /start to access the bot.`);
+    } catch (err) {
+      bot.sendMessage(chatId, `❌ Error: ${err.message}`);
+    }
+  });
+
+  // /deluser @username - Remove user from whitelist
+  bot.onText(/\/deluser @?(\w+)/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const adminId = msg.from.id.toString();
+    const targetUsername = match[1].toLowerCase();
+
+    if (!supabase) {
+      bot.sendMessage(chatId, '❌ Database not connected');
+      return;
+    }
+
+    // Check if sender is admin
+    const { data: adminData } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('telegram_id', adminId)
+      .single();
+
+    if (!adminData || !adminData.is_admin) {
+      bot.sendMessage(chatId, '❌ Admin only');
+      return;
+    }
+
+    try {
+      const { data: deleted } = await supabase
+        .from('users')
+        .delete()
+        .ilike('username', targetUsername)
+        .select();
+
+      if (deleted && deleted.length > 0) {
+        bot.sendMessage(chatId, `✅ Removed @${targetUsername} from whitelist`);
+      } else {
+        bot.sendMessage(chatId, `❌ User @${targetUsername} not found`);
+      }
+    } catch (err) {
+      bot.sendMessage(chatId, `❌ Error: ${err.message}`);
+    }
+  });
+
+  // /users - List all whitelisted users
+  bot.onText(/\/users/, async (msg) => {
+    const chatId = msg.chat.id;
+    const adminId = msg.from.id.toString();
+
+    if (!supabase) {
+      bot.sendMessage(chatId, '❌ Database not connected');
+      return;
+    }
+
+    // Check if sender is admin
+    const { data: adminData } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('telegram_id', adminId)
+      .single();
+
+    if (!adminData || !adminData.is_admin) {
+      bot.sendMessage(chatId, '❌ Admin only');
+      return;
+    }
+
+    try {
+      const { data: users } = await supabase
+        .from('users')
+        .select('username, first_name, telegram_id, is_admin')
+        .order('created_at', { ascending: true });
+
+      const userList = (users || [])
+        .map(u => {
+          const name = u.first_name || u.username || 'Unknown';
+          const status = u.telegram_id ? '✅' : '⏳'; // ✅ = activated, ⏳ = pending
+          const admin = u.is_admin ? ' 👑' : '';
+          return `${status} @${u.username || 'no_username'} (${name})${admin}`;
+        })
+        .join('\n');
+      
+      bot.sendMessage(chatId, 
+        `👥 *Whitelist* (${users?.length || 0} users):\n\n${userList || 'Empty'}\n\n` +
+        `✅ = activated, ⏳ = pending /start\n\n` +
+        `Commands:\n` +
+        `/adduser @username - Add user\n` +
+        `/deluser @username - Remove user`,
+        { parse_mode: 'Markdown' }
+      );
+    } catch (err) {
+      bot.sendMessage(chatId, `❌ Error: ${err.message}`);
     }
   });
 
@@ -743,20 +913,28 @@ app.post('/api/auth', async (req, res) => {
       return res.status(500).json({ error: 'Database not connected' });
     }
     
-    // Save or update user
-    const { data: dbUser, error } = await supabase
+    // Check if user exists in whitelist
+    const { data: dbUser } = await supabase
       .from('users')
-      .upsert({
+      .select('*')
+      .or(`telegram_id.eq.${userId},username.ilike.${user.username || 'NONE'}`)
+      .single();
+
+    if (!dbUser) {
+      return res.status(403).json({ error: 'Access denied. Not in whitelist.' });
+    }
+
+    // Update user data
+    await supabase
+      .from('users')
+      .update({
         telegram_id: userId,
         username: user.username,
         first_name: user.first_name,
         last_name: user.last_name,
         last_active: new Date().toISOString()
-      }, { onConflict: 'telegram_id' })
-      .select()
-      .single();
-
-    if (error) throw error;
+      })
+      .eq('id', dbUser.id);
 
     res.json({
       userId,

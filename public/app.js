@@ -70,6 +70,18 @@ class ChecklistApp {
         body: JSON.stringify({ initData })
       });
 
+      if (response.status === 403) {
+        // User not in whitelist
+        document.getElementById('app').innerHTML = `
+          <div class="access-denied">
+            <h1>🔒 Access Denied</h1>
+            <p>This app is private.</p>
+            <p>Ask admin to add you to the whitelist.</p>
+          </div>
+        `;
+        return;
+      }
+
       if (!response.ok) {
         throw new Error('Auth failed');
       }

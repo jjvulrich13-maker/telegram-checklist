@@ -56,6 +56,29 @@ body {
   overflow: hidden;
 }
 
+/* Access Denied Page */
+.access-denied {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: var(--spacing-xl);
+}
+
+.access-denied h1 {
+  font-size: 32px;
+  margin-bottom: var(--spacing-lg);
+}
+
+.access-denied p {
+  color: var(--tg-text-secondary);
+  font-size: 16px;
+  margin-bottom: var(--spacing-sm);
+}
+
 .screen {
   width: 100%;
   height: 100%;
