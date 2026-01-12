@@ -83,7 +83,7 @@ class ChecklistApp {
       this.loadChecklists();
     } catch (err) {
       console.error('Auth error:', err);
-      this.showNotification('❌ Ошибка авторизации');
+      this.showNotification('❌ Authentication error');
     }
   }
 
@@ -106,7 +106,7 @@ class ChecklistApp {
       console.log('Checklist created:', checklist);
       this.checklists.push(checklist);
       this.renderChecklistsList();
-      this.showNotification('✅ Чеклист создан');
+      this.showNotification('✅ Checklist created');
     });
 
     // Item status updated
@@ -122,7 +122,7 @@ class ChecklistApp {
           if (this.currentChecklistId === checklistId) {
             this.renderChecklistItems();
             if (modifiedBy !== this.userId) {
-              this.showNotification('🔄 Обновлено');
+              this.showNotification('🔄 Updated');
             }
           }
         }
@@ -169,7 +169,7 @@ class ChecklistApp {
         this.showChecklistScreen(null);
       }
       this.renderChecklistsList();
-      this.showNotification('🗑️ Чеклист удален');
+      this.showNotification('🗑️ Checklist deleted');
     });
   }
 
@@ -306,12 +306,12 @@ class ChecklistApp {
     const name = document.getElementById('nameInput').value.trim();
     
     if (!name) {
-      this.showNotification('⚠️ Введите имя чеклиста');
+      this.showNotification('⚠️ Enter checklist name');
       return;
     }
 
     if (name.length > 50) {
-      this.showNotification('⚠️ Имя слишком длинное');
+      this.showNotification('⚠️ Name is too long');
       return;
     }
 
@@ -322,7 +322,7 @@ class ChecklistApp {
     });
 
     this.hideCreateModal();
-    this.showNotification('⏳ Создание...');
+    this.showNotification('⏳ Creating...');
   }
 
   // ============================================
@@ -338,7 +338,12 @@ class ChecklistApp {
     }
 
     this.currentChecklistId = checklistId;
-    const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId);
+    const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId || String(c.id) === String(checklistId));
+    
+    if (!checklist) {
+      this.showNotification('❌ Checklist not found');
+      return;
+    }
     
     document.getElementById('checklistTitle').textContent = checklist.name;
     document.getElementById('checklistScreen').classList.remove('hidden');
@@ -374,7 +379,7 @@ class ChecklistApp {
     });
 
     this.hideDetailsModal();
-    this.showNotification('💾 Сохранено');
+    this.showNotification('💾 Saved');
   }
 
   // ============================================
@@ -435,7 +440,7 @@ class ChecklistApp {
             <div class="item-header" onclick="app.showDetailsModal('${checklistId}', '${itemId}')">
               <div>
                 <div class="item-name">${this.escapeHtml(item.name)}</div>
-                ${item.lastModified ? `<div class="item-modified">Обновлено</div>` : ''}
+                ${item.lastModified ? `<div class="item-modified">Updated</div>` : ''}
               </div>
             </div>
           </div>
@@ -450,12 +455,12 @@ class ChecklistApp {
 
   copyToClipboard(text, field) {
     if (!text) {
-      this.showNotification('❌ Поле пусто');
+      this.showNotification('❌ Field is empty');
       return;
     }
 
     navigator.clipboard.writeText(text).then(() => {
-      this.showNotification(`📋 ${field.toUpperCase()} скопирован`);
+      this.showNotification(`📋 ${field.toUpperCase()} copied`);
     });
   }
 
@@ -464,7 +469,7 @@ class ChecklistApp {
     // Use Telegram WebApp notification if available
     if (window.Telegram && window.Telegram.WebApp) {
       window.Telegram.WebApp.showPopup({
-        title: 'Уведомление',
+        title: 'Notification',
         message: message,
         buttons: [{ type: 'ok' }]
       });
