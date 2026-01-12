@@ -137,6 +137,26 @@ if (BOT_TOKEN) {
 
   // Get the Web App URL
   const WEB_APP_URL = process.env.WEB_APP_URL || 'https://telegram-checklist-production.up.railway.app';
+  const BOT_USERNAME = 'checkAwsBot'; // Your bot username without @
+
+  // Helper: Get keyboard based on chat type (web_app doesn't work in groups)
+  function getAppKeyboard(chatType) {
+    if (chatType === 'private') {
+      // web_app works in private chats
+      return {
+        inline_keyboard: [
+          [{ text: '📋 Open Checklist', web_app: { url: WEB_APP_URL } }]
+        ]
+      };
+    } else {
+      // For groups, use URL that opens bot with Mini App
+      return {
+        inline_keyboard: [
+          [{ text: '📋 Open Checklist', url: `https://t.me/${BOT_USERNAME}?startapp=open` }]
+        ]
+      };
+    }
+  }
 
   // Bot command handlers
   bot.onText(/\/start/, async (msg) => {
@@ -158,19 +178,11 @@ if (BOT_TOKEN) {
       console.error('Error saving user:', err);
     }
 
-    const keyboard = {
-      inline_keyboard: [
-        [{ text: '📋 Open Checklist App', web_app: { url: WEB_APP_URL } }]
-      ]
-    };
+    const keyboard = getAppKeyboard(msg.chat.type);
 
     bot.sendMessage(chatId, 
       '📋 Welcome to Telegram Checklist!\n\n' +
-      'Click the button below to open the app:\n\n' +
-      'Commands:\n' +
-      '/checklist - Open checklist app\n' +
-      '/admin <user_id> - Make admin\n' +
-      '/admins - List all admins',
+      'Click the button below to open the app:',
       { reply_markup: keyboard }
     );
   });
@@ -178,12 +190,7 @@ if (BOT_TOKEN) {
   // Command to open app (works in groups)
   bot.onText(/\/checklist/, async (msg) => {
     const chatId = msg.chat.id;
-    
-    const keyboard = {
-      inline_keyboard: [
-        [{ text: '📋 Open Checklist App', web_app: { url: WEB_APP_URL } }]
-      ]
-    };
+    const keyboard = getAppKeyboard(msg.chat.type);
 
     bot.sendMessage(chatId, 
       '📋 Click the button to open the Checklist App:',
@@ -194,12 +201,7 @@ if (BOT_TOKEN) {
   // Command /app as alias
   bot.onText(/\/app/, async (msg) => {
     const chatId = msg.chat.id;
-    
-    const keyboard = {
-      inline_keyboard: [
-        [{ text: '📋 Open Checklist App', web_app: { url: WEB_APP_URL } }]
-      ]
-    };
+    const keyboard = getAppKeyboard(msg.chat.type);
 
     bot.sendMessage(chatId, 
       '📋 Click the button to open the Checklist App:',
@@ -217,16 +219,17 @@ if (BOT_TOKEN) {
       return;
     }
     
+    // Use URL button for groups (web_app doesn't work in groups)
     const keyboard = {
       inline_keyboard: [
-        [{ text: '📋 Open Checklist', web_app: { url: WEB_APP_URL } }]
+        [{ text: '📋 Open Checklist', url: `https://t.me/${BOT_USERNAME}?startapp=open` }]
       ]
     };
 
     try {
       // Send message with button
       const sentMsg = await bot.sendMessage(chatId, 
-        '📋 **Team Checklist**\n\nClick the button below to open the checklist app:',
+        '📋 *Team Checklist*\n\nClick the button below to open the checklist app:',
         { 
           reply_markup: keyboard,
           parse_mode: 'Markdown'
