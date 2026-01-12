@@ -112,14 +112,14 @@ class ChecklistApp {
     // Item status updated
     this.socket.on('itemUpdated', (data) => {
       const { checklistId, itemId, status, emoji, modifiedBy } = data;
-      const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId);
+      const checklist = this.checklists.find(c => String(c._id) === String(checklistId) || String(c.id) === String(checklistId));
       
       if (checklist) {
-        const item = checklist.items.find(i => i._id === itemId || i.id === itemId);
+        const item = checklist.items.find(i => String(i._id) === String(itemId) || String(i.id) === String(itemId));
         if (item) {
           item.status = status;
           item.emoji = emoji;
-          if (this.currentChecklistId === checklistId) {
+          if (String(this.currentChecklistId) === String(checklistId)) {
             this.renderChecklistItems();
             if (modifiedBy !== this.userId) {
               this.showNotification('🔄 Updated');
@@ -132,13 +132,13 @@ class ChecklistApp {
     // Item details updated
     this.socket.on('detailsUpdated', (data) => {
       const { checklistId, itemId, details, modifiedBy } = data;
-      const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId);
+      const checklist = this.checklists.find(c => String(c._id) === String(checklistId) || String(c.id) === String(checklistId));
       
       if (checklist) {
-        const item = checklist.items.find(i => i._id === itemId || i.id === itemId);
+        const item = checklist.items.find(i => String(i._id) === String(itemId) || String(i.id) === String(itemId));
         if (item) {
           item.details = details;
-          if (this.currentItemId === itemId) {
+          if (String(this.currentItemId) === String(itemId)) {
             this.updateDetailsModal(item);
           }
         }
@@ -148,13 +148,13 @@ class ChecklistApp {
     // Emoji updated
     this.socket.on('emojiUpdated', (data) => {
       const { checklistId, itemId, emoji } = data;
-      const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId);
+      const checklist = this.checklists.find(c => String(c._id) === String(checklistId) || String(c.id) === String(checklistId));
       
       if (checklist) {
-        const item = checklist.items.find(i => i._id === itemId || i.id === itemId);
+        const item = checklist.items.find(i => String(i._id) === String(itemId) || String(i.id) === String(itemId));
         if (item) {
           item.emoji = emoji;
-          if (this.currentChecklistId === checklistId) {
+          if (String(this.currentChecklistId) === String(checklistId)) {
             this.renderChecklistItems();
           }
         }
@@ -164,8 +164,8 @@ class ChecklistApp {
     // Checklist deleted
     this.socket.on('checklistDeleted', (data) => {
       const { checklistId } = data;
-      this.checklists = this.checklists.filter(c => c._id !== checklistId && c.id !== checklistId);
-      if (this.currentChecklistId === checklistId) {
+      this.checklists = this.checklists.filter(c => String(c._id) !== String(checklistId) && String(c.id) !== String(checklistId));
+      if (String(this.currentChecklistId) === String(checklistId)) {
         this.showChecklistScreen(null);
       }
       this.renderChecklistsList();
@@ -200,7 +200,7 @@ class ChecklistApp {
 
     // Delete checklist
     document.getElementById('deleteBtn').addEventListener('click', () => {
-      if (confirm('⚠️ Вы уверены? Это действие нельзя отменить.')) {
+      if (confirm('Are you sure? This action cannot be undone.')) {
         this.socket.emit('deleteChecklist', { checklistId: this.currentChecklistId });
       }
     });
@@ -262,8 +262,9 @@ class ChecklistApp {
   }
 
   showDetailsModal(checklistId, itemId) {
-    const checklist = this.checklists.find(c => c._id === checklistId || c.id === checklistId);
-    const item = checklist.items.find(i => i._id === itemId || i.id === itemId);
+    const checklist = this.checklists.find(c => String(c._id) === String(checklistId) || String(c.id) === String(checklistId));
+    if (!checklist) return;
+    const item = checklist.items.find(i => String(i._id) === String(itemId) || String(i.id) === String(itemId));
 
     if (!item) return;
 
@@ -279,8 +280,8 @@ class ChecklistApp {
     // Show last modified info
     if (item.lastModified) {
       const date = new Date(item.lastModified);
-      const timeStr = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-      document.getElementById('modifiedInfo').textContent = `Обновлено: ${timeStr}`;
+      const timeStr = date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('modifiedInfo').textContent = `Updated: ${timeStr}`;
     }
 
     document.getElementById('detailsModal').classList.remove('hidden');
@@ -361,8 +362,9 @@ class ChecklistApp {
   }
 
   saveItemDetails() {
-    const checklist = this.checklists.find(c => c._id === this.currentChecklistId || c.id === this.currentChecklistId);
-    const item = checklist.items.find(i => i._id === this.currentItemId || i.id === this.currentItemId);
+    const checklist = this.checklists.find(c => String(c._id) === String(this.currentChecklistId) || String(c.id) === String(this.currentChecklistId));
+    if (!checklist) return;
+    const item = checklist.items.find(i => String(i._id) === String(this.currentItemId) || String(i.id) === String(this.currentItemId));
 
     const details = {
       login: document.getElementById('loginInput').value,
@@ -403,7 +405,8 @@ class ChecklistApp {
     emptyState.style.display = 'none';
 
     listContainer.innerHTML = this.checklists
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .filter(checklist => checklist && checklist.items)
+      .sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
       .map(checklist => {
         const completedCount = checklist.items.filter(i => i.status === 'APPROVED').length;
         const totalCount = checklist.items.length;
@@ -426,7 +429,12 @@ class ChecklistApp {
 
   renderChecklistItems() {
     const itemsContainer = document.getElementById('itemsList');
-    const checklist = this.checklists.find(c => c._id === this.currentChecklistId || c.id === this.currentChecklistId);
+    const checklist = this.checklists.find(c => c._id === this.currentChecklistId || c.id === this.currentChecklistId || String(c.id) === String(this.currentChecklistId));
+
+    if (!checklist || !checklist.items) {
+      itemsContainer.innerHTML = '<p class="text-secondary">No items</p>';
+      return;
+    }
 
     itemsContainer.innerHTML = checklist.items
       .map(item => {
@@ -466,14 +474,12 @@ class ChecklistApp {
 
   showNotification(message) {
     console.log(message);
-    // Use Telegram WebApp notification if available
-    if (window.Telegram && window.Telegram.WebApp) {
-      window.Telegram.WebApp.showPopup({
-        title: 'Notification',
-        message: message,
-        buttons: [{ type: 'ok' }]
-      });
-    }
+    // Simple toast notification instead of Telegram popup
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 2000);
   }
 
   escapeHtml(text) {

@@ -1,3 +1,4 @@
+
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -21,7 +22,18 @@ const io = socketIo(server, {
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public'));
+// Отдача статики из папки public
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Корневой маршрут
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Healthcheck для Railway
+app.get('/healthz', (req, res) => {
+  res.status(200).send('OK');
+});
 
 // ============================================
 // SUPABASE CONNECTION
@@ -89,9 +101,17 @@ const statusEmoji = {
 let bot = null;
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
+// Only use polling in development, not on Railway (to avoid conflicts)
+const usePolling = !process.env.RAILWAY_ENVIRONMENT;
+
 if (BOT_TOKEN) {
-  bot = new TelegramBot(BOT_TOKEN, { polling: true });
-  console.log('✅ Telegram Bot connected');
+  if (usePolling) {
+    bot = new TelegramBot(BOT_TOKEN, { polling: true });
+    console.log('✅ Telegram Bot connected (polling mode)');
+  } else {
+    bot = new TelegramBot(BOT_TOKEN, { polling: false });
+    console.log('✅ Telegram Bot connected (webhook mode - polling disabled)');
+  }
 
   // Bot command handlers
   bot.onText(/\/start/, async (msg) => {
@@ -241,6 +261,14 @@ if (BOT_TOKEN) {
 } else {
   console.log('⚠️  TELEGRAM_BOT_TOKEN не установлен - бот отключен');
 }
+
+// Webhook endpoint for Telegram (production)
+app.post('/api/telegram-webhook', (req, res) => {
+  if (bot) {
+    bot.processUpdate(req.body);
+  }
+  res.sendStatus(200);
+});
 
 // ============================================
 // TELEGRAM WEB APP VERIFICATION
@@ -630,7 +658,7 @@ io.on('connection', (socket) => {
 // START SERVER
 // ============================================
 
-const PORT = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8080;
 server.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📱 Open: http://localhost:${PORT}`);
